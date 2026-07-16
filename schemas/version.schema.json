@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Innocent254/wuwa-database-server/main/schemas/version.schema.json",
+  "title": "WuWa Companion Update Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "generated_at",
+    "database",
+    "assets",
+    "minimum_app_version_code",
+    "source_summary"
+  ],
+  "properties": {
+    "manifest_version": { "type": "integer", "minimum": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "game_patch": { "type": ["string", "null"] },
+    "database": { "$ref": "#/$defs/package" },
+    "assets": { "$ref": "#/$defs/package" },
+    "changelog_url": { "type": ["string", "null"], "format": "uri" },
+    "minimum_app_version_code": { "type": "integer", "minimum": 1 },
+    "source_summary": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    }
+  },
+  "$defs": {
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "available", "url", "sha256", "size_bytes"],
+      "properties": {
+        "version": { "type": "string" },
+        "available": { "type": "boolean" },
+        "url": { "type": ["string", "null"], "format": "uri" },
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size_bytes": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

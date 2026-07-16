@@ -1,0 +1,22 @@
+{
+  "manifest_version": 1,
+  "generated_at": "2026-07-16T00:00:00Z",
+  "game_patch": null,
+  "database": {
+    "version": "0.0.0",
+    "available": false,
+    "url": null,
+    "sha256": null,
+    "size_bytes": 0
+  },
+  "assets": {
+    "version": "0.0.0",
+    "available": false,
+    "url": null,
+    "sha256": null,
+    "size_bytes": 0
+  },
+  "changelog_url": null,
+  "minimum_app_version_code": 1,
+  "source_summary": {}
+}
