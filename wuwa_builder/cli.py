@@ -20,7 +20,7 @@ def build(
     max_items_per_dataset: int = typer.Option(250, min=1, max=500),
     include_images: bool = typer.Option(
         False,
-        help="Reserved for license-cleared images; community-wiki images are currently excluded.",
+        help="Download only representative images whose file metadata declares a reusable license.",
     ),
 ) -> None:
     """Read trusted structured sources, validate records, and build release packages."""

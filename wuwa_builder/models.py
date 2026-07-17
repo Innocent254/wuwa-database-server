@@ -28,7 +28,7 @@ class NewsRecord(StrictModel):
 
 
 class WikiEntityRecord(StrictModel):
-    """Validated text-only record sourced from a structured community wiki API."""
+    """Validated record sourced from a structured community-wiki API."""
 
     id: str
     name: str = Field(min_length=1, max_length=300)
@@ -40,12 +40,33 @@ class WikiEntityRecord(StrictModel):
     license_name: Literal["CC-BY-SA-3.0"] = "CC-BY-SA-3.0"
     license_url: HttpUrl = "https://creativecommons.org/licenses/by-sa/3.0/"
     attribution_url: HttpUrl
+    image_path: str | None = None
     source: SourceReference
+
+
+class LicensedImageCandidate(StrictModel):
+    """A Fandom file that passed explicit reusable-license checks."""
+
+    entity_id: str
+    file_title: str = Field(min_length=1, max_length=500)
+    source_url: HttpUrl
+    attribution_url: HttpUrl
+    license_name: str = Field(min_length=1, max_length=150)
+    license_url: HttpUrl
+    author: str = Field(default="", max_length=1000)
+    credit: str = Field(default="", max_length=2000)
 
 
 class AssetRecord(StrictModel):
     id: str
+    entity_id: str
+    file_title: str = Field(min_length=1, max_length=500)
     source_url: HttpUrl
+    attribution_url: HttpUrl
+    license_name: str = Field(min_length=1, max_length=150)
+    license_url: HttpUrl
+    author: str = Field(default="", max_length=1000)
+    credit: str = Field(default="", max_length=2000)
     relative_path: str
     sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     size_bytes: int = Field(ge=0)
