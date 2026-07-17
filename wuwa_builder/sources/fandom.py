@@ -257,7 +257,6 @@ class FandomMediaWikiSource:
                 "exsentences": "3",
                 "cllimit": "max",
                 "rvprop": "ids|timestamp",
-                "rvlimit": "1",
                 "redirects": "1",
                 "maxlag": "5",
             }
