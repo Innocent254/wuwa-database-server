@@ -52,6 +52,16 @@ def robots_allows_api(robots_text: str) -> bool:
     return parser.can_fetch(USER_AGENT, API_URL)
 
 
+def robots_status_is_unavailable(status: int) -> bool:
+    """Return True when RFC 9309 treats robots.txt as unavailable.
+
+    HTTP 4xx responses mean the robots file is unavailable and automated
+    clients may continue. HTTP 429 remains a deliberate local safety stop
+    because it explicitly signals rate limiting.
+    """
+    return 400 <= status < 500 and status != 429
+
+
 def is_supported_text_license(rights_info: dict[str, Any]) -> bool:
     combined = " ".join(
         str(rights_info.get(key) or "") for key in ("text", "url")
@@ -168,17 +178,26 @@ class FandomMediaWikiSource:
         await self._throttle()
         try:
             async with session.get(ROBOTS_URL, allow_redirects=True) as response:
-                if response.status == 404:
+                if robots_status_is_unavailable(response.status):
                     LOGGER.warning(
-                        "Fandom robots.txt was not found; proceeding with the public API."
+                        "Fandom robots.txt returned HTTP %s. RFC 9309 classifies "
+                        "HTTP 4xx robots responses as unavailable, so the public "
+                        "MediaWiki API check may continue.",
+                        response.status,
                     )
                     return
-                if response.status in {401, 403}:
+                if response.status == 429:
+                    retry_after = response.headers.get("Retry-After", "unknown")
                     raise RuntimeError(
-                        f"Fandom denied robots.txt access with HTTP {response.status}."
+                        "Fandom rate-limited the robots.txt request with HTTP 429 "
+                        f"(Retry-After: {retry_after}). Try the workflow again later."
                     )
                 if response.status >= 500:
-                    raise RuntimeError(f"Fandom robots.txt returned HTTP {response.status}.")
+                    raise RuntimeError(
+                        f"Fandom robots.txt returned HTTP {response.status}; "
+                        "RFC 9309 requires treating the site as disallowed while "
+                        "robots.txt is unreachable."
+                    )
                 response.raise_for_status()
                 robots_text = await response.text()
         except aiohttp.ClientError as exc:

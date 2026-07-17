@@ -1,19 +1,14 @@
-# Browser upload instructions
+# Upload this fix
 
-1. Extract `wuwa-mediawiki-source-fix.zip`.
-2. Open `Innocent254/wuwa-database-server` on GitHub.
-3. Click **Add file → Upload files**.
-4. Open the extracted `wuwa-mediawiki-source-fix` folder.
-5. Select and drag everything inside it into the GitHub upload area.
-6. Commit directly to `main` with:
+Upload the contents of this folder to the root of `wuwa-database-server`.
 
-   `Use MediaWiki API for structured WuWa data`
+This replaces:
 
-7. Start a new workflow run; do not use **Re-run failed jobs**.
-8. Use:
-   - Mode: `dry-run`
-   - Maximum records per dataset: `250`
-   - Include images: disabled
-   - Version override: blank
+- `wuwa_builder/sources/fandom.py`
+- `tests/test_fandom_source.py`
 
-Do not use `publish` until the new artifact has been inspected.
+Commit message:
+
+`Handle unavailable robots.txt under RFC 9309`
+
+Then run a fresh dry-run workflow with images disabled.

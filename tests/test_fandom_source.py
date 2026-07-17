@@ -5,12 +5,22 @@ from wuwa_builder.sources.fandom import (
     normalize_entity_name,
     records_from_query_pages,
     robots_allows_api,
+    robots_status_is_unavailable,
 )
 
 
 def test_robots_allows_public_api() -> None:
     assert robots_allows_api("User-agent: *\nAllow: /api.php\n")
     assert not robots_allows_api("User-agent: *\nDisallow: /api.php\n")
+
+
+def test_rfc9309_treats_regular_4xx_as_unavailable() -> None:
+    assert robots_status_is_unavailable(401)
+    assert robots_status_is_unavailable(403)
+    assert robots_status_is_unavailable(404)
+    assert not robots_status_is_unavailable(200)
+    assert not robots_status_is_unavailable(429)
+    assert not robots_status_is_unavailable(500)
 
 
 def test_supported_text_license_is_verified() -> None:
