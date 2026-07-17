@@ -17,10 +17,13 @@ console = Console()
 def build(
     output: Path = typer.Option(Path("build/release"), help="Generated release directory."),
     version: str = typer.Option("0.1.0", help="Database release version."),
-    max_news_items: int = typer.Option(30, min=1, max=200),
-    include_images: bool = typer.Option(True, help="Download and optimize source-linked images."),
+    max_items_per_dataset: int = typer.Option(250, min=1, max=500),
+    include_images: bool = typer.Option(
+        False,
+        help="Reserved for license-cleared images; community-wiki images are currently excluded.",
+    ),
 ) -> None:
-    """Scrape trusted sources, validate records, and build release packages."""
+    """Read trusted structured sources, validate records, and build release packages."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -29,7 +32,7 @@ def build(
         build_release(
             output_dir=output,
             version=version,
-            max_news_items=max_news_items,
+            max_items_per_dataset=max_items_per_dataset,
             include_images=include_images,
         )
     )

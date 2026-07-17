@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", validate_default=True)
 
 
 class SourceReference(StrictModel):
@@ -24,6 +24,22 @@ class NewsRecord(StrictModel):
     published_at: datetime | None = None
     body_text: str = ""
     image_urls: list[HttpUrl] = Field(default_factory=list)
+    source: SourceReference
+
+
+class WikiEntityRecord(StrictModel):
+    """Validated text-only record sourced from a structured community wiki API."""
+
+    id: str
+    name: str = Field(min_length=1, max_length=300)
+    entity_type: Literal["resonator", "weapon", "echo", "material"]
+    summary: str = Field(default="", max_length=4000)
+    categories: list[str] = Field(default_factory=list)
+    revision_id: int | None = Field(default=None, ge=1)
+    revision_timestamp: datetime | None = None
+    license_name: Literal["CC-BY-SA-3.0"] = "CC-BY-SA-3.0"
+    license_url: HttpUrl = "https://creativecommons.org/licenses/by-sa/3.0/"
+    attribution_url: HttpUrl
     source: SourceReference
 
 

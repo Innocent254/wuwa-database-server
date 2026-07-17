@@ -1,14 +1,19 @@
-# Upload this redirect fix
+# Browser upload instructions
 
-Upload the contents of this folder to the root of `Innocent254/wuwa-database-server` using GitHub's **Add file → Upload files** page.
+1. Extract `wuwa-mediawiki-source-fix.zip`.
+2. Open `Innocent254/wuwa-database-server` on GitHub.
+3. Click **Add file → Upload files**.
+4. Open the extracted `wuwa-mediawiki-source-fix` folder.
+5. Select and drag everything inside it into the GitHub upload area.
+6. Commit directly to `main` with:
 
-The upload replaces only:
+   `Use MediaWiki API for structured WuWa data`
 
-- `wuwa_builder/sources/official.py`
-- `tests/test_official_source.py`
+7. Start a new workflow run; do not use **Re-run failed jobs**.
+8. Use:
+   - Mode: `dry-run`
+   - Maximum records per dataset: `250`
+   - Include images: disabled
+   - Version override: blank
 
-Commit message:
-
-`Handle official-site redirects during data discovery`
-
-After committing, start a fresh **Build WuWa database manually** run in `dry-run` mode. Do not use **Re-run failed jobs**, because that would use the old commit.
+Do not use `publish` until the new artifact has been inspected.
