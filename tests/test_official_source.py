@@ -1,5 +1,6 @@
 from wuwa_builder.sources.official import (
     extract_supported_detail_urls,
+    is_interrupted_navigation_error,
     normalize_official_detail_url,
 )
 
@@ -33,3 +34,11 @@ def test_extracts_routes_embedded_in_rendered_html() -> None:
         "https://wutheringwaves.kurogames.com/en/announcement/451",
         "https://wutheringwaves.kurogames.com/en/news/detail/123",
     ]
+
+
+def test_detects_playwright_interrupted_navigation_error() -> None:
+    error = RuntimeError(
+        'Page.goto: Navigation to "https://example.test/news" is interrupted by another navigation'
+    )
+    assert is_interrupted_navigation_error(error)
+    assert not is_interrupted_navigation_error(RuntimeError("net::ERR_NAME_NOT_RESOLVED"))

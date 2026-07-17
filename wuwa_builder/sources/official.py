@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from urllib.parse import urljoin, urlparse, urlunparse
 
-from playwright.async_api import Browser, Page, TimeoutError as PlaywrightTimeout
+from playwright.async_api import Browser, Error as PlaywrightError, Page, TimeoutError as PlaywrightTimeout
 from playwright.async_api import async_playwright
 
 from wuwa_builder.models import NewsRecord, SourceReference
@@ -35,6 +35,11 @@ EMBEDDED_DETAIL_PATH = re.compile(
     re.IGNORECASE,
 )
 DETAIL_LINK_SELECTOR = "a[href*='/announcement/'], a[href*='/news/detail/']"
+
+
+def is_interrupted_navigation_error(error: BaseException) -> bool:
+    """Return True when the official SPA redirects during page.goto()."""
+    return "interrupted by another navigation" in str(error).casefold()
 
 
 def normalize_official_detail_url(raw_url: str, base_url: str = BASE_URL) -> str | None:
@@ -128,6 +133,52 @@ class OfficialSiteSource:
         page.set_default_timeout(NAVIGATION_TIMEOUT_MS)
         return page
 
+    async def _navigate(self, page: Page, url: str):
+        """Navigate while tolerating the official site's client-side redirects."""
+        try:
+            response = await page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=NAVIGATION_TIMEOUT_MS,
+            )
+        except PlaywrightError as error:
+            if not is_interrupted_navigation_error(error):
+                raise
+            LOGGER.info(
+                "Official site redirected during navigation: %s -> %s",
+                url,
+                page.url,
+            )
+            response = None
+
+        try:
+            await page.wait_for_load_state(
+                "domcontentloaded",
+                timeout=NAVIGATION_TIMEOUT_MS,
+            )
+        except PlaywrightTimeout:
+            LOGGER.warning(
+                "Redirected page did not report DOMContentLoaded; continuing at %s",
+                page.url,
+            )
+
+        # The official single-page app can perform a second immediate redirect after
+        # DOMContentLoaded. Wait briefly until the URL stops changing before reading it.
+        previous_url = page.url
+        stable_checks = 0
+        for _ in range(8):
+            await page.wait_for_timeout(300)
+            current_url = page.url
+            if current_url == previous_url:
+                stable_checks += 1
+                if stable_checks >= 2:
+                    break
+            else:
+                previous_url = current_url
+                stable_checks = 0
+
+        return response
+
     async def _discover_detail_urls(self, page: Page, max_items: int) -> list[str]:
         seen: set[str] = set()
         output: list[str] = []
@@ -137,11 +188,7 @@ class OfficialSiteSource:
                 break
             await self._throttle()
             try:
-                response = await page.goto(
-                    listing_url,
-                    wait_until="domcontentloaded",
-                    timeout=NAVIGATION_TIMEOUT_MS,
-                )
+                response = await self._navigate(page, listing_url)
                 if response is not None and response.status >= 400:
                     LOGGER.warning("Official listing returned HTTP %s: %s", response.status, listing_url)
                     continue
@@ -189,7 +236,7 @@ class OfficialSiteSource:
     async def _read_detail(self, page: Page, url: str) -> NewsRecord | None:
         await self._throttle()
         try:
-            response = await page.goto(url, wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT_MS)
+            response = await self._navigate(page, url)
             if response is not None and response.status >= 400:
                 LOGGER.warning("Rejected detail page with HTTP %s: %s", response.status, url)
                 return None
