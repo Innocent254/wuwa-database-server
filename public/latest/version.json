@@ -1,22 +1,22 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-07-18T17:37:35.587607Z",
+  "generated_at": "2026-07-19T17:52:22.790132Z",
   "game_patch": null,
   "database": {
-    "version": "0.1.11",
+    "version": "0.1.12",
     "available": true,
-    "url": "https://github.com/Innocent254/wuwa-database-server/releases/download/data-v0.1.11/database-full.wupack",
-    "sha256": "5768de1a49933d46d0a01572a00967847514a91b92e790f43af7dc6e97e40ae7",
-    "size_bytes": 41535
+    "url": "https://github.com/Innocent254/wuwa-database-server/releases/download/data-v0.1.12/database-full.wupack",
+    "sha256": "878dcca54b8cddf5835735e86ae50292a0b7ea19675a59def9984fc1df7ed2a7",
+    "size_bytes": 46242
   },
   "assets": {
-    "version": "0.1.11",
+    "version": "0.1.12",
     "available": false,
     "url": null,
     "sha256": null,
     "size_bytes": 0
   },
-  "changelog_url": "https://github.com/Innocent254/wuwa-database-server/releases/tag/data-v0.1.11",
+  "changelog_url": "https://github.com/Innocent254/wuwa-database-server/releases/tag/data-v0.1.12",
   "minimum_app_version_code": 1,
   "source_summary": {
     "news": 0,
