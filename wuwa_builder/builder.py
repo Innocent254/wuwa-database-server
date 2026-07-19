@@ -69,7 +69,7 @@ async def build_release(
 
     generated_at = datetime.now(timezone.utc).isoformat()
     catalog = {
-        "schema_version": 3,
+        "schema_version": 4,
         "generated_at": generated_at,
         "data_license": {
             "name": "CC-BY-SA-3.0",

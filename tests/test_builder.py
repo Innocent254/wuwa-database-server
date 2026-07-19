@@ -64,7 +64,7 @@ async def test_structured_data_builds_without_assets_when_images_disabled(
     assert manifest.source_summary["assets"] == 0
 
     catalog_data = json.loads((release / "catalog.json").read_text())
-    assert catalog_data["schema_version"] == 3
+    assert catalog_data["schema_version"] == 4
     assert "image_path" not in catalog_data["resonators"][0]
 
     with zipfile.ZipFile(release / "database-full.wupack") as archive:

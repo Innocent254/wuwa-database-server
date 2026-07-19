@@ -61,6 +61,15 @@ ENTITY_TYPES = {
     "materials": "material",
 }
 
+ELEMENTS = ("Aero", "Electro", "Fusion", "Glacio", "Havoc", "Spectro")
+WEAPON_TYPES = ("Broadblade", "Gauntlets", "Pistols", "Rectifier", "Sword")
+ECHO_CLASSES = ("Calamity", "Overlord", "Elite", "Common")
+KNOWN_REGIONS = ("Huanglong", "Jinzhou", "Rinascita", "Septimont", "Black Shores", "New Federation")
+KNOWN_FACTIONS = (
+    "Jinzhou", "The Black Shores", "Black Shores", "New Federation", "Fractsidus",
+    "Order of the Deep", "Septimont", "Rinascita",
+)
+
 FREE_LICENSE_MARKERS = (
     "cc0",
     "public domain",
@@ -218,6 +227,116 @@ def _parse_datetime(value: str | None) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
+def _category_value(categories: list[str], suffix: str, choices: Sequence[str]) -> str | None:
+    folded = [(category.casefold(), category) for category in categories]
+    for choice in choices:
+        needles = {f"{choice} {suffix}".casefold()}
+        if choice.endswith("s"):
+            needles.add(f"{choice[:-1]} {suffix}".casefold())
+        if any(needle in category for category, _ in folded for needle in needles):
+            return choice
+    return None
+
+
+def structured_metadata(categories: list[str], entity_type: str) -> dict[str, Any]:
+    """Turn stable wiki classifications into portable catalog fields.
+
+    Category names are preferable to brittle visual-page scraping and remain attached
+    to the record for attribution and future reprocessing.
+    """
+    joined = " | ".join(categories)
+    rarity_match = re.search(r"\b([1-5])-Star\b", joined, re.IGNORECASE)
+    version_match = re.search(r"Released in Version\s+([0-9]+(?:\.[0-9]+)*)", joined, re.IGNORECASE)
+    element = _category_value(categories, "Resonators", ELEMENTS)
+    weapon_type = _category_value(categories, "Resonators", WEAPON_TYPES)
+    if entity_type == "weapon":
+        weapon_type = next((choice for choice in WEAPON_TYPES if any(category.casefold() == choice.casefold() for category in categories)), None)
+    faction = None
+    if entity_type == "resonator":
+        faction = next((
+            category.removesuffix(" Resonators")
+            for category in categories
+            if category.endswith(" Resonators")
+            and category.removesuffix(" Resonators") in KNOWN_FACTIONS
+        ), None)
+    region = next((region for region in KNOWN_REGIONS if any(region.casefold() in category.casefold() for category in categories)), None)
+    echo_class = next((choice for choice in ECHO_CLASSES if any(f"{choice} Class".casefold() in category.casefold() for category in categories)), None)
+    material_type = next((
+        label for label in ("Ascension", "Forte", "Weapon Ascension", "Cooking", "Crafting", "Currency", "Local Specialty")
+        if any(label.casefold() in category.casefold() for category in categories)
+    ), None) if entity_type == "material" else None
+    sources = sorted({
+        category.removesuffix(" Source")
+        for category in categories
+        if category.endswith(" Source") and len(category) <= 80
+    })
+    return {
+        "rarity": int(rarity_match.group(1)) if rarity_match else None,
+        "element": element,
+        "weapon_type": weapon_type,
+        "echo_class": echo_class,
+        "faction": faction,
+        "region": region,
+        "release_version": version_match.group(1) if version_match else None,
+        "material_type": material_type,
+        "acquisition_sources": sources,
+    }
+
+
+def fallback_summary(name: str, entity_type: str, metadata: dict[str, Any]) -> str:
+    parts: list[str] = []
+    qualifiers = [
+        f"{metadata['rarity']}-star" if metadata.get("rarity") else None,
+        metadata.get("element"),
+        metadata.get("weapon_type"),
+        metadata.get("echo_class") and f"{metadata['echo_class']} Class",
+        metadata.get("material_type"),
+    ]
+    label = " ".join(str(value) for value in qualifiers if value)
+    noun = f"{label} {entity_type}".strip()
+    article = "an" if noun[:1].casefold() in "aeiou" else "a"
+    parts.append(f"{name} is {article} {noun} in Wuthering Waves.")
+    if metadata.get("faction"):
+        parts.append(f"Faction: {metadata['faction']}.")
+    elif metadata.get("region"):
+        parts.append(f"Region: {metadata['region']}.")
+    if metadata.get("release_version"):
+        parts.append(f"Introduced in Version {metadata['release_version']}.")
+    if metadata.get("acquisition_sources"):
+        parts.append("Source: " + ", ".join(metadata["acquisition_sources"]) + ".")
+    return " ".join(parts)
+
+
+def enrich_from_extract(metadata: dict[str, Any], extract: str) -> dict[str, Any]:
+    enriched = dict(metadata)
+    release_match = re.search(
+        r"Release Date\s+([A-Z][a-z]+\s+\d{1,2},\s+\d{4})",
+        extract,
+    )
+    if release_match:
+        enriched["release_date"] = release_match.group(1)
+    source_match = re.search(
+        r"(?:How to Obtain|Acquisition Method)\s+([^\n]{2,160})",
+        extract,
+        re.IGNORECASE,
+    )
+    if source_match and not enriched.get("acquisition_sources"):
+        enriched["acquisition_sources"] = [source_match.group(1).strip()]
+    return enriched
+
+
+def readable_extract_summary(name: str, extract: str) -> str:
+    normalized = " ".join(extract.split())
+    sentences = re.split(r"(?<=[.!?])\s+", normalized)
+    relevant = [
+        sentence for sentence in sentences
+        if name.casefold() in sentence.casefold()
+        and (" is " in sentence.casefold() or " serves " in sentence.casefold())
+        and len(sentence) <= 700
+    ]
+    return " ".join(relevant[:3])[:4000]
+
+
 def records_from_query_pages(
     pages: list[dict[str, Any]],
     entity_type: str,
@@ -247,13 +366,20 @@ def records_from_query_pages(
         revision_id = revision.get("revid") if isinstance(revision.get("revid"), int) else None
         revision_timestamp = _parse_datetime(revision.get("timestamp"))
 
+        extract = str(page.get("extract") or "").strip()
+        metadata = enrich_from_extract(structured_metadata(categories, entity_type), extract)
+        summary = readable_extract_summary(normalize_entity_name(title, entity_type), extract)
+        if not summary:
+            summary = fallback_summary(normalize_entity_name(title, entity_type), entity_type, metadata)
+
         output.append(
             WikiEntityRecord(
                 id=stable_id(entity_type, f"{page_id}:{source_url}"),
                 name=normalize_entity_name(title, entity_type),
                 entity_type=entity_type,
-                summary=str(page.get("extract") or "").strip()[:4000],
+                summary=summary,
                 categories=sorted(set(categories)),
+                **metadata,
                 revision_id=revision_id,
                 revision_timestamp=revision_timestamp,
                 attribution_url=source_url,
@@ -415,9 +541,8 @@ class FandomMediaWikiSource:
                 "gcmlimit": "50",
                 "prop": "info|extracts|categories|revisions",
                 "inprop": "url",
-                "exintro": "1",
                 "explaintext": "1",
-                "exsentences": "3",
+                "exchars": "4000",
                 "cllimit": "max",
                 "rvprop": "ids|timestamp",
                 "redirects": "1",

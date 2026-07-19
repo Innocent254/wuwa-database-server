@@ -35,6 +35,16 @@ class WikiEntityRecord(StrictModel):
     entity_type: Literal["resonator", "weapon", "echo", "material"]
     summary: str = Field(default="", max_length=4000)
     categories: list[str] = Field(default_factory=list)
+    rarity: int | None = Field(default=None, ge=1, le=5)
+    element: str | None = None
+    weapon_type: str | None = None
+    echo_class: str | None = None
+    faction: str | None = None
+    region: str | None = None
+    release_version: str | None = None
+    release_date: str | None = None
+    material_type: str | None = None
+    acquisition_sources: list[str] = Field(default_factory=list)
     revision_id: int | None = Field(default=None, ge=1)
     revision_timestamp: datetime | None = None
     license_name: Literal["CC-BY-SA-3.0"] = "CC-BY-SA-3.0"
