@@ -38,6 +38,7 @@ REQUEST_INTERVAL_SECONDS = 2.0
 REQUEST_TIMEOUT_SECONDS = 45
 MAX_RETRIES = 3
 PAGE_QUERY_BATCH_SIZE = 25
+DETAIL_QUERY_BATCH_SIZE = 5
 IMAGEINFO_BATCH_SIZE = 20
 MAX_LICENSED_IMAGES = 500
 
@@ -270,6 +271,19 @@ def structured_metadata(categories: list[str], entity_type: str) -> dict[str, An
         for category in categories
         if category.endswith(" Source") and len(category) <= 80
     })
+    folded_categories = " | ".join(categories).casefold()
+    if entity_type == "material":
+        availability = "farmable"
+        is_obtainable: bool | None = True
+    elif "event-exclusive" in folded_categories or "convene-exclusive" in folded_categories:
+        availability = "limited"
+        is_obtainable = None
+    elif "standard convene" in folded_categories or "permanent" in folded_categories:
+        availability = "permanent"
+        is_obtainable = True
+    else:
+        availability = "unknown"
+        is_obtainable = None
     return {
         "rarity": int(rarity_match.group(1)) if rarity_match else None,
         "element": element,
@@ -280,6 +294,8 @@ def structured_metadata(categories: list[str], entity_type: str) -> dict[str, An
         "release_version": version_match.group(1) if version_match else None,
         "material_type": material_type,
         "acquisition_sources": sources,
+        "availability": availability,
+        "is_obtainable": is_obtainable,
     }
 
 
@@ -322,7 +338,44 @@ def enrich_from_extract(metadata: dict[str, Any], extract: str) -> dict[str, Any
     )
     if source_match and not enriched.get("acquisition_sources"):
         enriched["acquisition_sources"] = [source_match.group(1).strip()]
+    roles_match = re.search(r"Combat Roles\s+(.+?)\s+(?:Bio|Voice Actors|Alias|Class)", extract, re.DOTALL | re.IGNORECASE)
+    if roles_match:
+        role_lines = [" ".join(line.split()) for line in roles_match.group(1).splitlines()]
+        enriched["combat_roles"] = list(dict.fromkeys(line for line in role_lines if 2 < len(line) < 80))
+    associated_match = re.search(r"Associated Resonator\s+([^\n]{2,100})", extract, re.IGNORECASE)
+    if associated_match:
+        enriched["associated_resonator"] = associated_match.group(1).strip()
     return enriched
+
+
+def progression_metadata(extract: str, entity_type: str) -> dict[str, Any]:
+    """Parse the two stat snapshots the client needs from wiki stat tables."""
+    normalized = " ".join(extract.split())
+    number = r"[0-9][0-9,.]*"
+    output: dict[str, Any] = {}
+    if entity_type == "resonator":
+        level_one = re.search(rf"0[✦★]?\s*1/20\s+({number})\s+({number})\s+({number})", normalized)
+        level_max = re.search(rf"90/90\s+({number})\s+({number})\s+({number})", normalized)
+        if level_one:
+            output["level_1_stats"] = {
+                "HP": level_one.group(1), "ATK": level_one.group(2), "DEF": level_one.group(3),
+            }
+        if level_max:
+            output["max_level"] = 90
+            output["max_level_stats"] = {
+                "HP": level_max.group(1), "ATK": level_max.group(2), "DEF": level_max.group(3),
+            }
+    elif entity_type == "weapon":
+        secondary_match = re.search(r"2nd Stat\s*\(([^)]+)\)", normalized, re.IGNORECASE)
+        secondary_name = secondary_match.group(1).strip() if secondary_match else "Secondary Stat"
+        level_one = re.search(rf"0[✦★]?\s*1/20\s+({number})\s+({number}%?)", normalized)
+        level_max = re.search(rf"90/90\s+({number})\s+({number}%?)", normalized)
+        if level_one:
+            output["level_1_stats"] = {"Base ATK": level_one.group(1), secondary_name: level_one.group(2)}
+        if level_max:
+            output["max_level"] = 90
+            output["max_level_stats"] = {"Base ATK": level_max.group(1), secondary_name: level_max.group(2)}
+    return output
 
 
 def readable_extract_summary(name: str, extract: str) -> str:
@@ -433,6 +486,12 @@ class FandomMediaWikiSource:
                     entity_type=ENTITY_TYPES[dataset],
                     max_items=max_items_per_dataset,
                 )
+                if dataset in {"resonators", "weapons"}:
+                    output[dataset] = await self._attach_progression_details(
+                        session,
+                        output[dataset],
+                        ENTITY_TYPES[dataset],
+                    )
                 LOGGER.info("Collected %d %s records from MediaWiki", len(output[dataset]), dataset)
             return output
 
@@ -629,6 +688,48 @@ class FandomMediaWikiSource:
                     return candidates
 
         return candidates
+
+    async def _attach_progression_details(
+        self,
+        session: aiohttp.ClientSession,
+        records: list[WikiEntityRecord],
+        entity_type: str,
+    ) -> list[WikiEntityRecord]:
+        by_title: dict[str, WikiEntityRecord] = {}
+        query_titles: list[str] = []
+        for record in records:
+            article_title = article_title_from_url(str(record.attribution_url)) or record.name
+            query_title = f"{article_title}/Combat" if entity_type == "resonator" else article_title
+            query_titles.append(query_title)
+            by_title[_title_key(query_title)] = record
+
+        enriched_by_id: dict[str, WikiEntityRecord] = {}
+        for batch in _batched(query_titles, DETAIL_QUERY_BATCH_SIZE):
+            payload = await self._request_json(
+                session,
+                {
+                    "action": "query",
+                    "format": "json",
+                    "formatversion": "2",
+                    "titles": "|".join(batch),
+                    "prop": "extracts",
+                    "explaintext": "1",
+                    "redirects": "1",
+                    "maxlag": "5",
+                },
+            )
+            pages = payload.get("query", {}).get("pages", [])
+            if not isinstance(pages, list):
+                continue
+            for page in pages:
+                record = by_title.get(_title_key(str(page.get("title") or "")))
+                if not record:
+                    continue
+                details = progression_metadata(str(page.get("extract") or ""), entity_type)
+                if details:
+                    enriched_by_id[record.id] = record.model_copy(update=details)
+
+        return [enriched_by_id.get(record.id, record) for record in records]
 
     async def _resolve_image_licenses(
         self,

@@ -11,6 +11,7 @@ from wuwa_builder.sources.fandom import (
     robots_status_is_unavailable,
     structured_metadata,
     enrich_from_extract,
+    progression_metadata,
 )
 
 
@@ -111,6 +112,34 @@ def test_release_date_and_acquisition_are_read_from_plain_text_extract() -> None
     """)
     assert metadata["release_date"] == "May 23, 2024"
     assert metadata["acquisition_sources"] == ["Absolute Pulsation: Verdant Summit"]
+
+
+def test_resonator_level_one_and_max_stats_are_extracted() -> None:
+    details = progression_metadata(
+        "0✦ 1/20 839.00 35.00 97.00 Ascension Costs 90/90 10,487.50 437.50 1,185.53",
+        "resonator",
+    )
+    assert details["level_1_stats"] == {"HP": "839.00", "ATK": "35.00", "DEF": "97.00"}
+    assert details["max_level"] == 90
+    assert details["max_level_stats"]["HP"] == "10,487.50"
+
+
+def test_weapon_level_one_and_max_stats_are_extracted() -> None:
+    details = progression_metadata(
+        "Base ATK 2nd Stat (Crit. DMG) 0✦ 1/20 47 10.8% 90/90 587 48.6%",
+        "weapon",
+    )
+    assert details["level_1_stats"] == {"Base ATK": "47", "Crit. DMG": "10.8%"}
+    assert details["max_level_stats"] == {"Base ATK": "587", "Crit. DMG": "48.6%"}
+
+
+def test_limited_and_permanent_availability_are_filterable() -> None:
+    limited = structured_metadata(["Event-Exclusive Weapons"], "weapon")
+    permanent = structured_metadata(["Standard Convene Weapons"], "weapon")
+    assert limited["availability"] == "limited"
+    assert limited["is_obtainable"] is None
+    assert permanent["availability"] == "permanent"
+    assert permanent["is_obtainable"] is True
 
 
 def test_missing_fullurl_is_reconstructed_instead_of_dropping_record() -> None:

@@ -45,6 +45,15 @@ class WikiEntityRecord(StrictModel):
     release_date: str | None = None
     material_type: str | None = None
     acquisition_sources: list[str] = Field(default_factory=list)
+    availability: Literal["permanent", "limited", "farmable", "unavailable", "unknown"] = "unknown"
+    is_obtainable: bool | None = None
+    combat_roles: list[str] = Field(default_factory=list)
+    associated_resonator: str | None = None
+    passive_name: str | None = None
+    passive_description: str | None = Field(default=None, max_length=4000)
+    max_level: int | None = Field(default=None, ge=1, le=100)
+    level_1_stats: dict[str, str] = Field(default_factory=dict)
+    max_level_stats: dict[str, str] = Field(default_factory=dict)
     revision_id: int | None = Field(default=None, ge=1)
     revision_timestamp: datetime | None = None
     license_name: Literal["CC-BY-SA-3.0"] = "CC-BY-SA-3.0"
