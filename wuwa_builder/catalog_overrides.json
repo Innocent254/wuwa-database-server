@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "records": [
+    {
+      "entity_type": "weapon",
+      "name": "Abyss Surges",
+      "verification_urls": [
+        "https://wutheringwaves.fandom.com/wiki/Abyss_Surges",
+        "https://wutheringwaves.fandom.com/wiki/Standard_Weapon_Convene/Winter_Brume:_Gauntlets"
+      ],
+      "required_fields": [
+        "summary",
+        "rarity",
+        "weapon_type",
+        "release_version",
+        "release_date",
+        "acquisition_sources",
+        "availability",
+        "is_obtainable",
+        "passive_name",
+        "passive_description",
+        "max_level",
+        "level_1_stats",
+        "max_level_stats"
+      ],
+      "fields": {
+        "summary": "Abyss Surges is a 5-star Gauntlets weapon from the Winter Brume series. It is permanently obtainable through the Standard Weapon Convene.",
+        "rarity": 5,
+        "weapon_type": "Gauntlets",
+        "release_version": "1.0",
+        "release_date": "May 23, 2024",
+        "acquisition_sources": [
+          "Standard Weapon Convene",
+          "Winter Brume Weapon Supply Chest"
+        ],
+        "availability": "permanent",
+        "is_obtainable": true,
+        "passive_name": "Stormy Resolution",
+        "passive_description": "At Rank 1, Energy Regen increases by 12.8%. A Resonance Skill hit grants 10% Basic Attack DMG Bonus for 8 seconds; a Basic Attack hit grants 10% Resonance Skill DMG Bonus for 8 seconds.",
+        "max_level": 90,
+        "level_1_stats": {
+          "Base ATK": "47",
+          "ATK": "8.1%"
+        },
+        "max_level_stats": {
+          "Base ATK": "587",
+          "ATK": "36.4%"
+        }
+      }
+    }
+  ]
+}

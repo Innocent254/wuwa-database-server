@@ -8,6 +8,7 @@ from pathlib import Path
 
 import orjson
 
+from wuwa_builder.catalog_overrides import apply_catalog_overrides
 from wuwa_builder.models import AssetRecord, PackageInfo, UpdateManifest, WikiEntityRecord
 from wuwa_builder.sources.fandom import FandomMediaWikiSource, WIKI_HOME_URL
 from wuwa_builder.util import sha256_file
@@ -31,6 +32,7 @@ async def build_release(
 
     source = FandomMediaWikiSource()
     datasets = await source.collect_catalog(max_items_per_dataset=max_items_per_dataset)
+    datasets = apply_catalog_overrides(datasets)
     resonators = datasets.get("resonators", [])
     weapons = datasets.get("weapons", [])
     echoes = datasets.get("echoes", [])
