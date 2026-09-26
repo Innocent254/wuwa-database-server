@@ -1,37 +1,29 @@
-# Drag-and-Drop Installation
+# Phase 1.1 Drag-and-Drop Upload
 
-Copy the contents of this ZIP into the root of `wuwa-database-server`.
+Upload the ZIP contents into the repository root.
 
-Expected new paths:
+### Replace
 
-wuwa_api/
-tests/api/
-tests/aggregation/
-docs/ONLINE_DATA_ARCHITECTURE.md
-docs/DRAG_AND_DROP.md
+- `pyproject.toml`
+- `wuwa_api/models.py`
+- `wuwa_api/cache/sqlite.py`
+- `wuwa_api/sources/fandom.py`
+- `wuwa_api/service.py`
+- `docs/ONLINE_DATA_ARCHITECTURE.md`
 
-## Important
+### Add
 
-This is an additive Phase 1 scaffold. It does not replace the existing
-`wuwa_builder/` and does not delete or modify your existing catalog data.
+- `tests/api/test_service.py`
 
-## Dependencies
+### Keep
 
-The API uses FastAPI and Uvicorn. Add these to the project's dependencies:
+Do not delete `wuwa_builder/`, the existing catalog data, release workflow,
+legal/licensing files, or existing API scaffold files.
 
-    fastapi>=0.115,<1
-    uvicorn[standard]>=0.30,<1
+After upload:
 
-Then install the development dependencies and run tests.
-
-## Local run
-
-    uvicorn wuwa_api.api:app --reload
-
-Open:
-
-    http://127.0.0.1:8000/docs
-
-The source adapter is deliberately a safe integration point. The next step is
-to connect the existing permitted Fandom MediaWiki acquisition code rather than
-introducing arbitrary scraping.
+```bash
+pip install -e ".[dev]"
+pytest -q
+uvicorn wuwa_api.api:app --reload
+```

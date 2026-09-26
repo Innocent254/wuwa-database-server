@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Any, Literal
 from pydantic import BaseModel, Field
 
-EntityType = Literal["character", "weapon", "echo", "material", "patch", "banner"]
+EntityType = Literal["character","weapon","echo","material","patch","banner"]
 
 class Provenance(BaseModel):
     source: str
